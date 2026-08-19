@@ -527,7 +527,8 @@ var UI = {
   noteLabel:     { ru:'Важно запомнить', kk:'Есте сақтаңыз' },
   warnLabel:     { ru:'Осторожно', kk:'Абайлаңыз' },
   checkLabel:    { ru:'Проверьте актуальные цифры', kk:'Ағымдағы сандарды тексеріңіз' },
-  langName:      { ru:'Русский', kk:'Қазақша' }
+  langName:      { ru:'Русский', kk:'Қазақша' },
+  oops:          { ru:'Что-то пошло не так. Обновите страницу — ваш прогресс сохранён.', kk:'Бірдеңе дұрыс болмады. Бетті жаңартыңыз — жетістігіңіз сақталған.' }
 };
 
 /* ==================================================================
@@ -3433,7 +3434,7 @@ function viewQuiz(){
         '<div class="card stack-s">' +
           '<div class="eyebrow">' + (i+1) + ' · ' + esc(a.ok ? t('right') : t('wrong')) + '</div>' +
           '<p style="font-weight:650">' + md(tx(item.q)) + '</p>' +
-          '<p class="muted">' + esc(S.lang==='ru'?'Правильный ответ: ':'Дұрыс жауап: ') + esc(tx(item.opts[item.correct])) + '</p>' +
+          '<p class="muted">' + esc(S.lang==='ru'?'Правильный ответ: ':'Дұрыс жауап: ') + esc(tx(item.opts)[item.correct]) + '</p>' +
           '<p style="font-size:var(--fs-sm);color:var(--ink2)">' + md(tx(item.why)) + '</p>' +
         '</div>'
       );
@@ -3463,7 +3464,7 @@ function viewQuiz(){
     '</section>'
   );
   h.push('<section class="stack">' +
-    item.opts.map(function(o, i){
+    tx(item.opts).map(function(o, i){
       var state = '';
       if (answered){
         if (i === item.correct) state = 'correct';
@@ -3497,12 +3498,24 @@ function viewQuiz(){
 /* ==================================================================
    8. РОУТЕР
    ================================================================== */
+function buildView(){
+  if (S.screen === 'module') return viewModule();
+  if (S.screen === 'lesson') return viewLesson();
+  if (S.screen === 'quiz')   return viewQuiz();
+  return viewHome();
+}
+
 function render(){
   var v;
-  if (S.screen === 'module') v = viewModule();
-  else if (S.screen === 'lesson') v = viewLesson();
-  else if (S.screen === 'quiz') v = viewQuiz();
-  else v = viewHome();
+  try {
+    v = buildView();
+  } catch (err) {
+    // Страховка: если экран не собрался, не оставляем приложение мёртвым,
+    // а возвращаем пользователя на главную. Прогресс при этом не теряется.
+    S.screen = 'home'; S.mid = null; S.lid = null; S.quiz = null;
+    try { v = viewHome(); }
+    catch (err2) { v = { html:'<p class="muted">' + esc(t('oops')) + '</p>', title:t('appTitleShort'), back:false, action:'' }; }
+  }
 
   el('view').innerHTML = v.html;
   el('topTitle').textContent = v.title;
